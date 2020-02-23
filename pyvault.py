@@ -11,6 +11,22 @@ from getpass import getpass
 def cli():
     pass
 
+@cli.command(help='Login to vault server and save token')
+@click.option('--method', default='ldap',
+              help='Type of authentication to use such as "userpass" or "ldap".The default is ldap.')
+@click.option('--tls_skip_verify', is_flag=True, default=True,
+              help='Skip ssl certificate verification')
+def login(method, tls_skip_verify):
+    print(method)
+    print(tls_skip_verify)
+    client = None
+    if method == 'ldap':
+        client = _vault_connect(tls_skip_verify, ldap=True)
+    elif method == 'userpass':
+        client = _vault_connect(tls_skip_verify, userpass=True)
+    else:
+        client = _vault_connect(tls_skip_verify)
+    return client    
 
 @cli.command(help='Writes contents of a YAML file to vault.')
 @click.argument('filename', type=click.Path(exists=True))
@@ -86,14 +102,17 @@ def _repr_str(dumper, data):
     return dumper.org_represent_str(data)
 
 
-def _vault_connect(tls_skip_verify=True, userpass=False):
+def _vault_connect(tls_skip_verify=True, userpass=False, ldap=False):
     """
     Connects to vault using env vars for address and token, or userpass auth.
     :return: vault client object
     :param tls_skip_verify: true/false to enable/disable ssl cert verification
     :param userpass: true/false to enable/disable userpass auth backend
     """
-
+    print("connect")
+    print(tls_skip_verify)
+    print(userpass)
+    print(ldap)
     if userpass:
         try:
             username = input('Vault username: ')
@@ -101,6 +120,13 @@ def _vault_connect(tls_skip_verify=True, userpass=False):
             client = hvac.Client(url=os.environ['VAULT_ADDR'],
                                  verify=tls_skip_verify)
             client.auth_userpass(username, password)
+        except Exception as e:
+            print('Error connecting to vault: %s' % e)
+            sys.exit(1)
+    elif ldap:
+        try:
+            username = input('Vault username: ')
+            password = getpass(prompt='Vault password: ')
         except Exception as e:
             print('Error connecting to vault: %s' % e)
             sys.exit(1)
