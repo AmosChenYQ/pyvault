@@ -26,7 +26,7 @@ def login(method, tls_skip_verify):
         client = _vault_connect(tls_skip_verify, userpass=True)
     else:
         client = _vault_connect(tls_skip_verify)
-    return client    
+    return client   
 
 @cli.command(help='Writes contents of a YAML file to vault.')
 @click.argument('filename', type=click.Path(exists=True))
@@ -42,6 +42,8 @@ def write(filename, tls_skip_verify, userpass):
     :param userpass: true/false to enable/disable userpass auth backend
     :return:
     """
+    # TODO change logic of login via different ways first then write to login via token then write
+    # TODO add overwrite and write-add-on
 
     client = _vault_connect(tls_skip_verify, userpass)
     data = _load_yaml(filename)
@@ -71,7 +73,7 @@ def read(path, tls_skip_verify, userpass):
     :param userpass: true/false to enable/disable userpass auth backend
     :return:
     """
-
+    # TODO change logic of login via different ways first then read to login via token then read
     client = _vault_connect(tls_skip_verify, userpass)
     d = {path: {}}
 
@@ -127,6 +129,12 @@ def _vault_connect(tls_skip_verify=True, userpass=False, ldap=False):
         try:
             username = input('Vault username: ')
             password = getpass(prompt='Vault password: ')
+            client = hvac.Client(url=os.environ['VAULT_ADDR'],
+                                 verify=tls_skip_verify)
+            login_response = client.auth.ldap.login(username=username,
+                                                    password=password)
+
+            write_response = _write_token_to_tmp_file(login_response['auth']['client_token'])
         except Exception as e:
             print('Error connecting to vault: %s' % e)
             sys.exit(1)
@@ -177,6 +185,28 @@ def _sanitize_dict(data):
 
     return data
 
+def _write_token_to_tmp_file(data):
+    """
+    Write token to a tmp file named .pyvault under user's home directory
+    :param data: str
+    """
+    try:
+        with open(os.path.join(os.path.expanduser("~"), '.pyvault'), "w") as fd:
+            res = fd.write(data)
+        if res == 0:
+            raise Exception("Saving token to {0} failed".format(os.path.join(os.path.expanduser("~"), '.pyvault')))
+    except Exception as e:
+        print( 'Error saving token to tmp file {0} with {1}'.format( os.path.join(os.path.expanduser("~"), '.pyvault'), e) )
+        sys.exit(1)
+    return res
+
+def _read_token_from_tmp_file()
+    """
+    Read token from a tmp file named .pyvault under user's home directory
+    :return: token
+    """
+    # TODO read token from tmp file
+    return token
 
 if __name__ == '__main__':
     cli()
