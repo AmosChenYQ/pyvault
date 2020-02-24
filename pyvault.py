@@ -17,6 +17,7 @@ def cli():
 @click.option('--tls_skip_verify', is_flag=True, default=True,
               help='Skip ssl certificate verification')
 def login(method, tls_skip_verify):
+    # TODO change method to a arg instead of a list of equals
     print(method)
     print(tls_skip_verify)
     client = None
@@ -61,11 +62,9 @@ def write(filename, tls_skip_verify, userpass):
 
 @cli.command(help='Dumps key values from vault in YAML format.')
 @click.argument('path')
-@click.option('--userpass', is_flag=True, default=False,
-              help='Use userpass auth backend instead of token.')
 @click.option('--tls_skip_verify', is_flag=True, default=True,
               help='Skip ssl certificate verification')
-def read(path, tls_skip_verify, userpass):
+def read(path, tls_skip_verify):
     """
     Reads from vault key at the given path and dumps values.
     :param path: path to the key in vault
@@ -74,7 +73,12 @@ def read(path, tls_skip_verify, userpass):
     :return:
     """
     # TODO change logic of login via different ways first then read to login via token then read
-    client = _vault_connect(tls_skip_verify, userpass)
+
+    # Get token from tmp file
+    token = _read_token_from_tmp_file()
+    # connect to vault via token
+    client = _vault_connect(tls_skip_verify, userpass=False, ldap=False)
+    # client = _vault_connect(tls_skip_verify, userpass)
     d = {path: {}}
 
     try:
@@ -200,12 +204,19 @@ def _write_token_to_tmp_file(data):
         sys.exit(1)
     return res
 
-def _read_token_from_tmp_file()
+def _read_token_from_tmp_file():
     """
     Read token from a tmp file named .pyvault under user's home directory
     :return: token
     """
-    # TODO read token from tmp file
+    try:
+        with open(os.path.join(os.path.expanduser("~"), '.pyvault'), "w") as fd:
+            token = fd.read()
+        if token == None:
+            raise Exception("Tmo file which saves token is empty")
+    except Exception as e:
+        print( 'Error reading token from tmp file {0} with {1}'.format( os.path.join(os.path.expanduser("~"), '.pyvault'), e) )
+        sys.exit(1)
     return token
 
 if __name__ == '__main__':

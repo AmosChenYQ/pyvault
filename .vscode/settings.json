@@ -1,0 +1,5 @@
+{
+    "python.pythonPath": "C:\\Users\\amosc\\.pyenv\\pyenv-win\\versions\\3.8.0\\python.exe",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true
+}
